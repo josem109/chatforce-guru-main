@@ -10,6 +10,7 @@ import {
   loadMessagesFromStorage,
 } from "@/lib/chatStorage";
 import { generateMockResponse } from "@/lib/mockResponses";
+import { CobranzaWizard } from "@/components/cobranza/CobranzaWizard";
 
 type Message = Omit<ChatMessageProps, "animationDelay">;
 
@@ -35,6 +36,7 @@ const Index: React.FC = () => {
   >(null);
   const [isOrderCompleted, setIsOrderCompleted] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isCobranzaWizardOpen, setIsCobranzaWizardOpen] = useState(false);
 
   // Load saved messages when component mounts
   useEffect(() => {
@@ -328,6 +330,13 @@ Producto seleccionado: ${nombre} ($${precio})
       let botResponseText;
 
       if (
+        content.toLowerCase().includes("procesar") &&
+        content.toLowerCase().includes("cobranza")
+      ) {
+        setIsCobranzaWizardOpen(true);
+        botResponseText =
+          "He abierto el asistente de cobranza para ti. Por favor, selecciona las facturas que deseas procesar.";
+      } else if (
         content.toLowerCase().includes("crear") &&
         content.toLowerCase().includes("pedido")
       ) {
@@ -598,6 +607,126 @@ Total de ventas del semestre: $465K`;
     [handleSendMessage]
   );
 
+  const handleCobranzaWizardClose = () => {
+    setIsCobranzaWizardOpen(false);
+    // Aquí podrías agregar lógica adicional cuando se cierra el wizard
+  };
+
+  const handleCobranzaComplete = (resumen: {
+    facturas: any[];
+    pagos: any[];
+    montoTotal: number;
+    comprobante: string;
+  }) => {
+    const resumenMessage = `Cobranza procesada exitosamente
+
+<div class="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+  <div class="flex items-center gap-2 text-green-500 mb-4">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
+    <span class="font-medium">Cobranza Completada</span>
+  </div>
+
+  <div class="space-y-4">
+    <div>
+      <h4 class="text-sm font-medium mb-2">Facturas Procesadas</h4>
+      <div class="bg-white/5 rounded-lg p-3">
+        <table class="min-w-full">
+          <thead>
+            <tr>
+              <th class="text-left text-xs font-medium text-muted-foreground">Número</th>
+              <th class="text-left text-xs font-medium text-muted-foreground">Fecha</th>
+              <th class="text-right text-xs font-medium text-muted-foreground">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${resumen.facturas
+              .map(
+                (factura) => `
+              <tr>
+                <td class="text-sm">${factura.numero}</td>
+                <td class="text-sm">${factura.fecha}</td>
+                <td class="text-sm text-right">$${factura.montoPendiente.toFixed(
+                  2
+                )}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h4 class="text-sm font-medium mb-2">Pagos Registrados</h4>
+      <div class="bg-white/5 rounded-lg p-3">
+        <table class="min-w-full">
+          <thead>
+            <tr>
+              <th class="text-left text-xs font-medium text-muted-foreground">Banco</th>
+              <th class="text-left text-xs font-medium text-muted-foreground">Referencia</th>
+              <th class="text-left text-xs font-medium text-muted-foreground">Tipo</th>
+              <th class="text-right text-xs font-medium text-muted-foreground">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${resumen.pagos
+              .map(
+                (pago) => `
+              <tr>
+                <td class="text-sm">${pago.banco}</td>
+                <td class="text-sm">${pago.referencia}</td>
+                <td class="text-sm">${pago.tipoPago}</td>
+                <td class="text-sm text-right">$${pago.monto.toFixed(2)}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center text-sm">
+      <span class="font-medium">Monto Total Pagado:</span>
+      <span class="font-semibold">$${resumen.montoTotal.toFixed(2)}</span>
+    </div>
+
+    <div class="mt-4">
+      <a
+        href="${resumen.comprobante}"
+        download="comprobante-cobranza.pdf"
+        class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-sm"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <span>Descargar Comprobante</span>
+      </a>
+    </div>
+
+    <div class="mt-4 text-sm text-muted-foreground border-t border-border/50 pt-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Nota: Esta cobranza debe ser validada y aprobada por el equipo de finanzas.</span>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+    const botMessage: Message = {
+      content: resumenMessage,
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages((prevMessages) => [...prevMessages, botMessage]);
+  };
+
   return (
     <div className="h-screen flex flex-col max-w-4xl mx-auto px-4">
       <Header />
@@ -610,6 +739,12 @@ Total de ventas del semestre: $465K`;
       <div className="mb-4">
         <SampleQueries onSelectQuery={handleSelectQuery} />
       </div>
+
+      <CobranzaWizard
+        isOpen={isCobranzaWizardOpen}
+        onClose={handleCobranzaWizardClose}
+        onCobranzaComplete={handleCobranzaComplete}
+      />
     </div>
   );
 };

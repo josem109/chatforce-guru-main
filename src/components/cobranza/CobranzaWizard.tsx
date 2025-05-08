@@ -17,176 +17,105 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FacturasGrid } from "./FacturasGrid.tsx";
-import { MontoCobroInput } from "./MontoCobroInput";
+import { FacturasGrid } from "./FacturasGrid";
 import { PagosGrid } from "./PagosGrid";
 import { ResumenCobranza } from "./ResumenCobranza";
 import { toast } from "@/hooks/use-toast";
 import { generatePDF } from "@/lib/pdfGenerator";
+import { facturasMock } from "@/lib/mockData";
+
+interface Factura {
+  numero: string;
+  fecha: string;
+  montoOriginal: number;
+  montoPendiente: number;
+}
+
+interface Pago {
+  id: string;
+  banco: string;
+  referencia: string;
+  tipoPago: string;
+  monto: number;
+  fechaValor: string;
+  archivo: File | null;
+}
 
 interface CobranzaWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onCobranzaComplete: (resumen: {
-    facturas: any[];
-    pagos: any[];
+    facturas: Factura[];
+    pagos: Pago[];
     montoTotal: number;
     comprobante: string;
   }) => void;
 }
 
-type WizardStep = "facturas" | "monto" | "pagos" | "confirmacion";
+type WizardStep = "seleccion" | "pagos" | "confirmacion";
 
-const steps: WizardStep[] = ["facturas", "monto", "pagos", "confirmacion"];
-
-// Datos ficticios para las facturas
-const facturasMock = [
-  {
-    numero: "F001",
-    fecha: "2023-01-15",
-    montoOriginal: 1000,
-    montoPendiente: 1000,
-  },
-  {
-    numero: "F002",
-    fecha: "2023-02-20",
-    montoOriginal: 2000,
-    montoPendiente: 2000,
-  },
-  {
-    numero: "F003",
-    fecha: "2023-03-10",
-    montoOriginal: 1500,
-    montoPendiente: 1500,
-  },
-  {
-    numero: "F004",
-    fecha: "2023-04-05",
-    montoOriginal: 3000,
-    montoPendiente: 3000,
-  },
-  {
-    numero: "F005",
-    fecha: "2023-05-12",
-    montoOriginal: 2500,
-    montoPendiente: 2500,
-  },
-];
+const steps: WizardStep[] = ["seleccion", "pagos", "confirmacion"];
 
 export const CobranzaWizard: React.FC<CobranzaWizardProps> = ({
   isOpen,
   onClose,
   onCobranzaComplete,
 }) => {
-  const [currentStep, setCurrentStep] = useState<WizardStep>("facturas");
-  const [selectedFacturas, setSelectedFacturas] = useState<string[]>([]);
-  const [montoCobro, setMontoCobro] = useState<number>(0);
-  const [isMontoValid, setIsMontoValid] = useState<boolean>(true);
-  const [pagos, setPagos] = useState<any[]>([]);
-  const [isPagosValid, setIsPagosValid] = useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState<WizardStep>("seleccion");
+  const [selectedFacturas, setSelectedFacturas] = useState<Factura[]>([]);
+  const [pagos, setPagos] = useState<Pago[]>([]);
+  const [montoCobro, setMontoCobro] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
-  // Calcular el monto máximo basado en las facturas seleccionadas
-  const montoMaximo = facturasMock
-    .filter((factura) => selectedFacturas.includes(factura.numero))
-    .reduce((sum, factura) => sum + factura.montoPendiente, 0);
-
-  const handleNext = () => {
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < steps.length) {
-      setCurrentStep(steps[nextIndex]);
-    }
+  const handleFacturaSelection = (facturas: Factura[]) => {
+    setSelectedFacturas(facturas);
+    const montoTotal = facturas.reduce(
+      (sum, factura) => sum + factura.montoPendiente,
+      0
+    );
+    setMontoCobro(montoTotal);
   };
 
-  const handlePrevious = () => {
-    const prevIndex = currentStepIndex - 1;
-    if (prevIndex >= 0) {
-      setCurrentStep(steps[prevIndex]);
-    }
-  };
-
-  const handleCancel = () => {
-    onClose();
-  };
-
-  const handleMontoChange = (monto: number, isValid: boolean) => {
-    setMontoCobro(monto);
-    setIsMontoValid(isValid);
-  };
-
-  const handlePagosChange = (newPagos: any[], isValid: boolean) => {
+  const handlePagosChange = (newPagos: Pago[], isValid: boolean) => {
     setPagos(newPagos);
-    setIsPagosValid(isValid);
-  };
-
-  // Validar si se puede avanzar al siguiente paso
-  const canProceed = () => {
-    switch (currentStep) {
-      case "facturas":
-        return selectedFacturas.length > 0;
-      case "monto":
-        return montoCobro > 0 && isMontoValid;
-      case "pagos":
-        return isPagosValid;
-      default:
-        return true;
-    }
-  };
-
-  const handleFinish = async () => {
-    setShowConfirmDialog(true);
   };
 
   const handleConfirmCobranza = async () => {
     try {
-      const facturasSeleccionadas = facturasMock.filter((factura) =>
-        selectedFacturas.includes(factura.numero)
-      );
-
       // Generar PDF
       let comprobantePDF;
       try {
         comprobantePDF = await generatePDF({
-          facturas: facturasSeleccionadas,
-          pagos,
+          facturas: selectedFacturas,
+          pagos: pagos,
           montoTotal: montoCobro,
-          fecha: new Date().toISOString(),
         });
-      } catch (pdfError) {
-        console.error("Error generando PDF:", pdfError);
-        throw new Error("No se pudo generar el comprobante PDF");
+      } catch (error) {
+        console.error("Error al generar PDF:", error);
+        throw new Error("Error al generar el comprobante PDF");
       }
 
-      // Notificar completación
+      // Enviar resumen al chat
       onCobranzaComplete({
-        facturas: facturasSeleccionadas,
-        pagos,
+        facturas: selectedFacturas,
+        pagos: pagos,
         montoTotal: montoCobro,
         comprobante: comprobantePDF,
       });
 
-      // Mostrar mensaje de éxito
-      toast({
-        title: "Cobranza procesada con éxito",
-        description:
-          "El comprobante ha sido generado y está listo para descargar.",
-        variant: "default",
-        className: "bg-green-500 text-white border-0",
-      });
-
-      // Cerrar el modal
+      // Cerrar wizard
       onClose();
     } catch (error) {
-      console.error("Error al procesar la cobranza:", error);
+      console.error("Error al procesar cobranza:", error);
       toast({
-        title: "Error al procesar la cobranza",
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : "Ha ocurrido un error al procesar la cobranza. Por favor, intente nuevamente.",
+            : "Ha ocurrido un error al procesar la cobranza",
         variant: "destructive",
       });
     }
@@ -202,39 +131,137 @@ export const CobranzaWizard: React.FC<CobranzaWizardProps> = ({
     onClose();
   };
 
-  const renderStepContent = () => {
+  const renderStep = () => {
     switch (currentStep) {
-      case "facturas":
+      case "seleccion":
         return (
-          <FacturasGrid
-            selectedFacturas={selectedFacturas}
-            onSelectionChange={setSelectedFacturas}
-          />
-        );
-      case "monto":
-        return (
-          <MontoCobroInput
-            montoMaximo={montoMaximo}
-            onMontoChange={handleMontoChange}
-          />
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Selección de Facturas</h3>
+            <FacturasGrid
+              facturas={facturasMock}
+              selectedFacturas={selectedFacturas}
+              onSelectionChange={handleFacturaSelection}
+            />
+          </div>
         );
       case "pagos":
         return (
-          <PagosGrid
-            montoMaximo={montoCobro}
-            onPagosChange={handlePagosChange}
-          />
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Registro de Pagos</h3>
+            <PagosGrid
+              montoMaximo={montoCobro}
+              onPagosChange={handlePagosChange}
+            />
+          </div>
         );
       case "confirmacion":
-        const facturasSeleccionadas = facturasMock.filter((factura) =>
-          selectedFacturas.includes(factura.numero)
-        );
         return (
-          <ResumenCobranza
-            facturas={facturasSeleccionadas}
-            pagos={pagos}
-            montoTotal={montoCobro}
-          />
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Resumen de Cobranza</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">
+                    Facturas Seleccionadas
+                  </h4>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Número
+                          </th>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Fecha
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground">
+                            Monto
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedFacturas.map((factura) => (
+                          <tr key={factura.numero}>
+                            <td className="text-sm">{factura.numero}</td>
+                            <td className="text-sm">{factura.fecha}</td>
+                            <td className="text-sm text-right">
+                              ${factura.montoPendiente.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium mb-2">
+                    Pagos Registrados
+                  </h4>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Banco
+                          </th>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Referencia
+                          </th>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Tipo
+                          </th>
+                          <th className="text-left text-xs font-medium text-muted-foreground">
+                            Fecha Valor
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground">
+                            Monto
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagos.map((pago) => (
+                          <tr key={pago.id}>
+                            <td className="text-sm">{pago.banco}</td>
+                            <td className="text-sm">{pago.referencia}</td>
+                            <td className="text-sm">{pago.tipoPago}</td>
+                            <td className="text-sm">{pago.fechaValor}</td>
+                            <td className="text-sm text-right">
+                              ${pago.monto.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-medium">Monto Total a Pagar:</span>
+                  <span className="font-semibold">
+                    ${montoCobro.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCurrentStep("pagos")}
+              >
+                Atrás
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmCobranza}
+                className="bg-primary text-white hover:bg-primary/90"
+              >
+                Confirmar Cobranza
+              </Button>
+            </div>
+          </div>
         );
       default:
         return null;
@@ -244,7 +271,7 @@ export const CobranzaWizard: React.FC<CobranzaWizardProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[1000px]">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Proceso de Cobranza</DialogTitle>
           </DialogHeader>
@@ -256,29 +283,35 @@ export const CobranzaWizard: React.FC<CobranzaWizardProps> = ({
             </div>
           </div>
 
-          <div className="mt-6">{renderStepContent()}</div>
+          <div className="mt-6">{renderStep()}</div>
 
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={handleCancel}>
-              Cancelar
-            </Button>
-
-            <div className="space-x-2">
-              {currentStepIndex > 0 && (
-                <Button variant="outline" onClick={handlePrevious}>
-                  Anterior
-                </Button>
-              )}
-              {currentStepIndex === steps.length - 1 ? (
-                <Button onClick={handleFinish} disabled={!canProceed()}>
-                  Finalizar
-                </Button>
-              ) : (
-                <Button onClick={handleNext} disabled={!canProceed()}>
-                  Siguiente
-                </Button>
-              )}
-            </div>
+            {currentStep !== "seleccion" && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setCurrentStep(
+                    currentStep === "pagos" ? "seleccion" : "pagos"
+                  )
+                }
+              >
+                Atrás
+              </Button>
+            )}
+            {currentStep !== "confirmacion" && (
+              <Button
+                type="button"
+                onClick={() =>
+                  setCurrentStep(
+                    currentStep === "seleccion" ? "pagos" : "confirmacion"
+                  )
+                }
+                className="bg-primary text-white hover:bg-primary/90"
+              >
+                Siguiente
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -1,53 +1,65 @@
-
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Lock } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageSquare, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username || !password) {
       toast({
         title: "Error",
         description: "Por favor ingresa tu nombre de usuario y contraseña",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     // For demonstration - in production, this would be a real API call
     setTimeout(() => {
       // Mock credentials check - would be done on server in production
-      if (username === 'admin' && password === 'admin123') {
+      if (username === "admin" && password === "admin123") {
         // Store auth token or session - in production use secure methods
-        localStorage.setItem('admin_authenticated', 'true');
-        
+        localStorage.setItem("admin_authenticated", "true");
+        localStorage.removeItem("user_authenticated");
+
         toast({
           title: "Éxito",
-          description: "Inicio de sesión exitoso",
+          description: "Inicio de sesión exitoso como administrador",
         });
-        
+
         // Redirect to admin dashboard
-        navigate('/admin/users');
+        navigate("/admin/users");
+      } else if (username === "user" && password === "user123") {
+        // Store auth token or session - in production use secure methods
+        localStorage.setItem("user_authenticated", "true");
+        localStorage.removeItem("admin_authenticated");
+
+        toast({
+          title: "Éxito",
+          description: "Inicio de sesión exitoso como usuario",
+        });
+
+        // Redirect to user chat
+        navigate("/chat");
       } else {
         toast({
           title: "Error de autenticación",
           description: "Credenciales inválidas. Por favor intenta nuevamente.",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
-      
+
       setIsLoading(false);
     }, 1000);
   };
@@ -60,13 +72,13 @@ const Login: React.FC = () => {
             <MessageSquare className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-            ChatForce Admin
+            ChatForce
           </h1>
           <p className="text-muted-foreground mt-2">
-            Panel de administración
+            Inicia sesión para continuar
           </p>
         </div>
-        
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="username" className="text-sm font-medium">
@@ -79,7 +91,7 @@ const Login: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="pl-10"
-                placeholder="admin"
+                placeholder="admin o user"
                 autoComplete="username"
               />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -87,7 +99,7 @@ const Login: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
               Contraseña
@@ -107,18 +119,15 @@ const Login: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
           </Button>
         </form>
-        
+
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Use "admin" / "admin123" for demo access</p>
+          <p>Use "admin" / "admin123" para acceso de administrador</p>
+          <p>Use "user" / "user123" para acceso de usuario</p>
         </div>
       </div>
     </div>

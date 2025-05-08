@@ -1,8 +1,21 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MessageSquare, Settings, LogOut, ChevronDown } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("user_authenticated");
+    toast({
+      title: "Sesión cerrada",
+      description: "Has cerrado sesión exitosamente",
+    });
+    setIsMenuOpen(false);
+    navigate("/admin/login");
+  };
 
   return (
     <header className="flex items-center justify-between py-4 px-6 border-b border-border/40 glass-morphism rounded-xl mb-4 relative z-[100]">
@@ -47,10 +60,7 @@ const Header: React.FC = () => {
               </button>
               <button
                 className="w-full flex items-center px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={() => {
-                  // Handle logout click
-                  setIsMenuOpen(false);
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 <span>Cerrar Sesión</span>

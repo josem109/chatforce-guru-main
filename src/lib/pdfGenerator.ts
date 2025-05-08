@@ -1,47 +1,48 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-interface GeneratePDFParams {
-  facturas: Array<{
-    numero: string;
-    fecha: string;
-    montoPendiente: number;
-  }>;
-  pagos: Array<{
-    banco: string;
-    referencia: string;
-    tipoPago: string;
-    monto: number;
-  }>;
-  montoTotal: number;
+interface Factura {
+  numero: string;
   fecha: string;
+  montoOriginal: number;
+  montoPendiente: number;
+}
+
+interface Pago {
+  id: string;
+  banco: string;
+  referencia: string;
+  tipoPago: string;
+  monto: number;
+  fechaValor: string;
+  archivo: File | null;
+}
+
+interface GeneratePDFParams {
+  facturas: Factura[];
+  pagos: Pago[];
+  montoTotal: number;
 }
 
 export const generatePDF = async ({
   facturas,
   pagos,
   montoTotal,
-  fecha,
 }: GeneratePDFParams): Promise<string> => {
   try {
-    // Crear nuevo documento PDF
     const doc = new jsPDF();
-
-    // Configurar fuente
-    doc.setFont("helvetica");
 
     // Título
     doc.setFontSize(20);
-    doc.text("Comprobante de Cobranza", 105, 20, { align: "center" });
+    doc.text("Comprobante de Cobranza", 20, 20);
 
     // Información general
     doc.setFontSize(12);
-    doc.text(`Fecha: ${new Date(fecha).toLocaleDateString()}`, 20, 40);
-    doc.text(`Número de Comprobante: ${Date.now()}`, 20, 50);
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 20, 40);
 
-    // Facturas
+    // Facturas procesadas
     doc.setFontSize(14);
-    doc.text("Facturas Procesadas", 20, 70);
+    doc.text("Facturas Procesadas", 20, 60);
 
     const facturasData = facturas.map((factura) => [
       factura.numero,
@@ -50,62 +51,57 @@ export const generatePDF = async ({
     ]);
 
     autoTable(doc, {
-      startY: 75,
+      startY: 70,
       head: [["Número", "Fecha", "Monto"]],
       body: facturasData,
       theme: "grid",
       headStyles: { fillColor: [41, 128, 185] },
     });
 
-    // Pagos
-    const finalY = (doc as any).lastAutoTable.finalY || 75;
+    // Pagos registrados
     doc.setFontSize(14);
-    doc.text("Pagos Registrados", 20, finalY + 20);
+    doc.text("Pagos Registrados", 20, (doc as any).lastAutoTable.finalY + 20);
 
     const pagosData = pagos.map((pago) => [
       pago.banco,
       pago.referencia,
       pago.tipoPago,
+      pago.fechaValor,
       `$${pago.monto.toFixed(2)}`,
     ]);
 
     autoTable(doc, {
-      startY: finalY + 25,
-      head: [["Banco", "Referencia", "Tipo", "Monto"]],
+      startY: (doc as any).lastAutoTable.finalY + 30,
+      head: [["Banco", "Referencia", "Tipo", "Fecha Valor", "Monto"]],
       body: pagosData,
       theme: "grid",
       headStyles: { fillColor: [41, 128, 185] },
     });
 
-    // Total
-    const finalY2 = (doc as any).lastAutoTable.finalY || finalY + 25;
+    // Monto total
     doc.setFontSize(14);
-    doc.text(`Monto Total: $${montoTotal.toFixed(2)}`, 20, finalY2 + 20);
+    doc.text(
+      `Monto Total: $${montoTotal.toFixed(2)}`,
+      20,
+      (doc as any).lastAutoTable.finalY + 20
+    );
 
-    // Firma y sello
-    doc.setFontSize(12);
-    doc.text("_____________________", 40, finalY2 + 50);
-    doc.text("Firma Autorizada", 50, finalY2 + 60);
-
-    doc.text("_____________________", 150, finalY2 + 50);
-    doc.text("Sello", 165, finalY2 + 60);
-
-    // Nota al pie
+    // Nota de validación
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100); // Color gris para la nota
-    const nota =
-      "Nota: Esta cobranza debe ser validada y aprobada por el equipo de finanzas.";
-    const pageHeight = doc.internal.pageSize.height;
-    doc.text(nota, 20, pageHeight - 20, {
-      maxWidth: doc.internal.pageSize.width - 40,
-    });
-    doc.setTextColor(0, 0, 0); // Restaurar color negro para futuros textos
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      "Nota: Esta cobranza debe ser validada y aprobada por el equipo de finanzas.",
+      20,
+      (doc as any).lastAutoTable.finalY + 40
+    );
 
-    // Convertir a base64
-    const pdfBase64 = doc.output("datauristring");
-    return pdfBase64;
+    // Restaurar color de texto
+    doc.setTextColor(0, 0, 0);
+
+    // Generar PDF como base64
+    return doc.output("datauristring");
   } catch (error) {
     console.error("Error generando PDF:", error);
-    throw new Error("Error al generar el PDF");
+    throw new Error("No se pudo generar el comprobante PDF");
   }
 };

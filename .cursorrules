@@ -1,0 +1,89 @@
+You are an expert in TypeScript, React, Vite, Tailwind CSS, and shadcn-ui, specializing in frontend development for dynamic chatbots and real-time communication interfaces.
+
+Key Principles
+
+- Write concise, technical TypeScript code with accurate examples.
+- Use functional and declarative programming patterns; avoid class-based components.
+- Prefer modularization and reusability over duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasRequestedHelp, shouldDisplayOperator).
+- Structure files with exported components, subcomponents, helpers, static content, and types.
+- Favor named exports for components and functions.
+- Use lowercase with dashes for directory and file names (e.g., components/chat-window).
+
+TypeScript Usage
+
+- Always use TypeScript for all code.
+- Prefer interfaces over types for object structures.
+- Avoid enums; use union types or constant maps instead.
+- Use strict mode enabled for better type safety.
+
+React Usage
+
+- Use functional components and hooks.
+- Minimize unnecessary useEffect and state; favor derived state when possible.
+- Manage complex state with reducers or dedicated state hooks.
+- Use the "function" keyword for defining components and utilities.
+
+UI and Styling
+
+- Use Tailwind CSS for all styling following mobile-first and utility-first principles.
+- Use shadcn-ui components to build consistent, accessible interfaces.
+- Organize Tailwind classes using the cn() utility where appropriate.
+- Implement responsive and accessible design.
+- Follow shadcn's component conventions; extend components only when necessary.
+
+Chatbot-Specific Guidelines
+
+- Implement clear conversation state management: distinguish between bot responses, user messages, and operator interactions.
+- Provide visual feedback for sending, loading, and received messages.
+- Ensure smooth, intuitive transitions between bot-only mode and human-operator mode.
+- Handle user input validation before sending messages.
+- Display clear error states if a message fails to send.
+
+Accessibility (a11y)
+
+- All interactive elements must be keyboard-navigable.
+- Implement appropriate ARIA attributes for chat interfaces.
+- Provide focus styles for inputs and buttons.
+
+Performance Optimization
+
+- Use dynamic imports and code splitting for non-critical components.
+- Implement lazy loading for large modules or third-party libraries.
+- Optimize images and assets; use SVGs or lightweight formats where possible.
+
+Backend Integration Readiness
+
+- Use environment variables for API URLs and keys.
+- Prepare API service helpers for sending and receiving chat messages.
+- Design the frontend to easily accommodate a future Python backend, using well-typed service functions.
+- Always validate and sanitize all user inputs before sending to backend services.
+
+Error Handling and Edge Cases
+
+- Implement early returns for error states.
+- Use guard clauses to validate preconditions and edge cases early in functions.
+- Display user-friendly error messages in case of API errors or disconnections.
+- Gracefully handle timeouts, rate limits, and backend unavailability.
+
+Documentation
+
+- Comment complex logic clearly.
+- Include types and interfaces documentation when defining new structures.
+- Document chat-related flows (bot-human transitions, connection statuses).
+
+Project Conventions
+
+- Use lowercase with dashes for file and folder names.
+- Name React components with PascalCase.
+- Use camelCase for variables, functions, and props.
+- Use auxiliary verbs for boolean variables (e.g., isConnected, hasError, shouldShowBotMessage).
+- Keep all components focused and small — single responsibility principle.
+- Co-locate tests near the components they test.
+
+Future Backend Rules Notice
+
+- This file is a living document: backend rules for Python integration will be added once the framework is chosen.
+- Ensure frontend code remains adaptable for upcoming API standards and conversation flows.
+
+Always prioritize clean code, user experience, accessibility, and maintainability across all project codebases.

@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Plus, Trash2, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ interface Pago {
   referencia: string;
   tipoPago: string;
   monto: number;
+  fechaValor: string;
   archivo: File | null;
 }
 
@@ -55,47 +56,6 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [error, setError] = useState<string>("");
 
-  const handleAddPago = () => {
-    const newPago: Pago = {
-      id: Date.now().toString(),
-      banco: "",
-      referencia: "",
-      tipoPago: "",
-      monto: 0,
-      archivo: null,
-    };
-    setPagos([...pagos, newPago]);
-  };
-
-  const handleRemovePago = (id: string) => {
-    setPagos(pagos.filter((pago) => pago.id !== id));
-  };
-
-  const handlePagoChange = (id: string, field: keyof Pago, value: any) => {
-    const updatedPagos = pagos.map((pago) => {
-      if (pago.id === id) {
-        return { ...pago, [field]: value };
-      }
-      return pago;
-    });
-    setPagos(updatedPagos);
-    validatePagos(updatedPagos);
-  };
-
-  const handleFileChange = (id: string, file: File | null) => {
-    if (file) {
-      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-        setError("Solo se permiten archivos PDF, JPG y PNG");
-        return;
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        setError("El archivo no debe superar los 5MB");
-        return;
-      }
-    }
-    handlePagoChange(id, "archivo", file);
-  };
-
   const validatePagos = (pagosToValidate: Pago[]) => {
     // Validar que todos los campos estén completos
     const todosLosCamposCompletos = pagosToValidate.every(
@@ -104,6 +64,7 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
         pago.referencia &&
         pago.tipoPago &&
         pago.monto > 0 &&
+        pago.fechaValor &&
         pago.archivo
     );
 
@@ -144,6 +105,57 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
     onPagosChange(pagosToValidate, true);
   };
 
+  const handleAddPago = () => {
+    const newPago: Pago = {
+      id: Date.now().toString(),
+      banco: "",
+      referencia: "",
+      tipoPago: "",
+      monto: 0,
+      fechaValor: "",
+      archivo: null,
+    };
+    const updatedPagos = [...pagos, newPago];
+    setPagos(updatedPagos);
+    validatePagos(updatedPagos);
+  };
+
+  const handleRemovePago = (id: string) => {
+    const updatedPagos = pagos.filter((pago) => pago.id !== id);
+    setPagos(updatedPagos);
+    validatePagos(updatedPagos);
+  };
+
+  const handlePagoChange = (
+    id: string,
+    field: keyof Pago,
+    value: string | number | File | null
+  ) => {
+    const updatedPagos = pagos.map((pago) =>
+      pago.id === id ? { ...pago, [field]: value } : pago
+    );
+    setPagos(updatedPagos);
+    validatePagos(updatedPagos);
+  };
+
+  const handleFileChange = (id: string, file: File | null) => {
+    if (file) {
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        setError("Solo se permiten archivos PDF, JPG y PNG");
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setError("El archivo no debe superar los 5MB");
+        return;
+      }
+    }
+    handlePagoChange(id, "archivo", file);
+  };
+
+  const handleRemoveFile = (id: string) => {
+    handlePagoChange(id, "archivo", null);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -169,37 +181,59 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Banco
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Referencia
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Tipo
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Monto
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha Valor
+              </th>
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Archivo
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                Acciones
+              <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                <svg
+                  className="h-4 w-4 inline-block"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {pagos.map((pago) => (
               <tr key={pago.id}>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap">
                   <Select
                     value={pago.banco}
                     onValueChange={(value) =>
                       handlePagoChange(pago.id, "banco", value)
                     }
                   >
-                    <SelectTrigger className="w-[160px] h-8">
+                    <SelectTrigger className="w-[140px] h-8">
                       <SelectValue placeholder="Seleccionar banco" />
                     </SelectTrigger>
                     <SelectContent>
@@ -211,24 +245,24 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap">
                   <Input
                     value={pago.referencia}
                     onChange={(e) =>
                       handlePagoChange(pago.id, "referencia", e.target.value)
                     }
                     placeholder="Referencia"
-                    className="w-[120px] h-8"
+                    className="w-[100px] h-8"
                   />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap">
                   <Select
                     value={pago.tipoPago}
                     onValueChange={(value) =>
                       handlePagoChange(pago.id, "tipoPago", value)
                     }
                   >
-                    <SelectTrigger className="w-[140px] h-8">
+                    <SelectTrigger className="w-[120px] h-8">
                       <SelectValue placeholder="Tipo de pago" />
                     </SelectTrigger>
                     <SelectContent>
@@ -240,7 +274,7 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap">
                   <Input
                     type="number"
                     value={pago.monto}
@@ -252,11 +286,21 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
                       )
                     }
                     placeholder="0.00"
-                    className="w-[100px] h-8"
+                    className="w-[90px] h-8"
                   />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
+                <td className="px-2 py-2 whitespace-nowrap">
+                  <Input
+                    type="date"
+                    value={pago.fechaValor}
+                    onChange={(e) =>
+                      handlePagoChange(pago.id, "fechaValor", e.target.value)
+                    }
+                    className="w-[120px] h-8"
+                  />
+                </td>
+                <td className="px-2 py-2 whitespace-nowrap">
+                  <div className="flex flex-col gap-1">
                     <Input
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
@@ -266,22 +310,33 @@ export const PagosGrid: React.FC<PagosGridProps> = ({
                       className="w-[120px] h-8"
                     />
                     {pago.archivo && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <span className="text-sm text-muted-foreground">
-                              {pago.archivo.name.slice(0, 8)}...
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{pago.archivo.name}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px] block">
+                                {pago.archivo.name.slice(0, 15)}...
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{pago.archivo.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(pago.id)}
+                          className="h-4 w-4 p-0 hover:bg-transparent text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap text-center">
                   <Button
                     variant="ghost"
                     size="sm"

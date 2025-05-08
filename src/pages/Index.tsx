@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import ChatHistory from "@/components/ChatHistory";
 import ChatInput from "@/components/ChatInput";
@@ -11,6 +12,9 @@ import {
 } from "@/lib/chatStorage";
 import { generateMockResponse } from "@/lib/mockResponses";
 import { CobranzaWizard } from "@/components/cobranza/CobranzaWizard";
+import { facturasMock } from "@/lib/mockData";
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type Message = Omit<ChatMessageProps, "animationDelay">;
 
@@ -27,6 +31,7 @@ interface Producto {
 }
 
 const Index: React.FC = () => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
@@ -52,6 +57,15 @@ const Index: React.FC = () => {
       saveMessagesToStorage(messages);
     }
   }, [messages]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user_authenticated");
+    toast({
+      title: "Sesión cerrada",
+      description: "Has cerrado sesión exitosamente",
+    });
+    navigate("/admin/login");
+  };
 
   const handleClientSelection = useCallback((client: Cliente) => {
     setSelectedClient(client);
@@ -512,41 +526,51 @@ Total de ventas del semestre: $465K`;
         content.toLowerCase().includes("estado") &&
         content.toLowerCase().includes("cuenta")
       ) {
-        const accountData = [
-          { codigo: "CLI001", nombre: "Juan Pérez", deuda: 2500 },
-          { codigo: "CLI002", nombre: "María García", deuda: 1800 },
-          { codigo: "CLI003", nombre: "Carlos Rodríguez", deuda: 3200 },
-          { codigo: "CLI004", nombre: "Ana Martínez", deuda: 1500 },
-          { codigo: "CLI005", nombre: "Luis Torres", deuda: 2900 },
-        ];
+        try {
+          const facturasPendientes = facturasMock;
 
-        const csvContent = `data:text/csv;charset=utf-8,Código del Cliente,Nombre Cliente,Cuentas por Cobrar $\n${accountData
-          .map((row) => `${row.codigo},${row.nombre},${row.deuda}`)
-          .join("\n")}`;
+          const csvContent = `data:text/csv;charset=utf-8,Número de Factura,Fecha,Monto Original $,Monto Pendiente $\n${facturasPendientes
+            .map(
+              (factura) =>
+                `${factura.numero},${factura.fecha},${factura.montoOriginal},${factura.montoPendiente}`
+            )
+            .join("\n")}`;
 
-        botResponseText = `Aquí tienes el estado de cuenta de tus clientes:
+          botResponseText = `Aquí tienes el estado de cuenta con las facturas pendientes:
 
 <div class="overflow-x-auto mt-4 mb-2">
   <table class="min-w-full bg-white/10 rounded-lg overflow-hidden">
     <thead class="bg-primary/10">
       <tr>
-        <th class="px-4 py-2 text-left text-sm">Código del Cliente</th>
-        <th class="px-4 py-2 text-left text-sm">Nombre Cliente</th>
-        <th class="px-4 py-2 text-left text-sm">Cuentas por Cobrar $</th>
+        <th class="px-4 py-2 text-left text-sm">Número de Factura</th>
+        <th class="px-4 py-2 text-left text-sm">Fecha</th>
+        <th class="px-4 py-2 text-right text-sm">Monto Original</th>
+        <th class="px-4 py-2 text-right text-sm">Monto Pendiente</th>
       </tr>
     </thead>
     <tbody>
-      ${accountData
+      ${facturasPendientes
         .map(
-          (row) => `
+          (factura) => `
         <tr class="border-t border-border/30">
-          <td class="px-4 py-2 text-sm">${row.codigo}</td>
-          <td class="px-4 py-2 text-sm">${row.nombre}</td>
-          <td class="px-4 py-2 text-sm">$${row.deuda}</td>
+          <td class="px-4 py-2 text-sm">${factura.numero}</td>
+          <td class="px-4 py-2 text-sm">${factura.fecha}</td>
+          <td class="px-4 py-2 text-sm text-right">$${factura.montoOriginal.toFixed(
+            2
+          )}</td>
+          <td class="px-4 py-2 text-sm text-right">$${factura.montoPendiente.toFixed(
+            2
+          )}</td>
         </tr>
       `
         )
         .join("")}
+      <tr class="border-t border-border/30 bg-primary/5">
+        <td colspan="3" class="px-4 py-2 text-sm font-medium text-right">Total Pendiente:</td>
+        <td class="px-4 py-2 text-sm font-medium text-right">$${facturasPendientes
+          .reduce((sum, factura) => sum + factura.montoPendiente, 0)
+          .toFixed(2)}</td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -554,13 +578,18 @@ Total de ventas del semestre: $465K`;
 <div class="mt-4 flex items-center">
   <a href="${encodeURI(
     csvContent
-  )}" download="estado_cuenta_clientes.csv" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-sm">
+  )}" download="facturas_pendientes.csv" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-sm">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
     </svg>
-    <span>Descargar CSV</span>
+    <span>Descargar Facturas</span>
   </a>
 </div>`;
+        } catch (error) {
+          console.error("Error al procesar estado de cuenta:", error);
+          botResponseText =
+            "Lo siento, ha ocurrido un error al procesar el estado de cuenta. Por favor, intenta nuevamente.";
+        }
       } else if (content.toLowerCase().includes("pago")) {
         setIsEmailSent(false);
         botResponseText = `El pago aún no se ha acreditado en el banco. ¿Quieres que le envíe un correo al Cliente?
@@ -730,21 +759,24 @@ Total de ventas del semestre: $465K`;
   return (
     <div className="h-screen flex flex-col max-w-4xl mx-auto px-4">
       <Header />
-
       <div className="flex-1 flex flex-col glass-morphism rounded-xl p-2 md:p-4 overflow-hidden mb-4">
-        <ChatHistory messages={messages} isTyping={isTyping} />
-        <ChatInput onSendMessage={handleSendMessage} isTyping={isTyping} />
+        <div className="flex-1 overflow-y-auto">
+          <ChatHistory messages={messages} isTyping={isTyping} />
+        </div>
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <SampleQueries onSelectQuery={handleSelectQuery} />
+          </div>
+          <ChatInput onSendMessage={handleSendMessage} isTyping={isTyping} />
+        </div>
       </div>
-
-      <div className="mb-4">
-        <SampleQueries onSelectQuery={handleSelectQuery} />
-      </div>
-
-      <CobranzaWizard
-        isOpen={isCobranzaWizardOpen}
-        onClose={handleCobranzaWizardClose}
-        onCobranzaComplete={handleCobranzaComplete}
-      />
+      {isCobranzaWizardOpen && (
+        <CobranzaWizard
+          isOpen={isCobranzaWizardOpen}
+          onClose={handleCobranzaWizardClose}
+          onCobranzaComplete={handleCobranzaComplete}
+        />
+      )}
     </div>
   );
 };
